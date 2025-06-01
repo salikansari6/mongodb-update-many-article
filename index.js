@@ -2,7 +2,7 @@ import express from "express";
 import mongoose, { mongo } from "mongoose";
 
 const app = express();
-app.use(express.json())
+app.use(express.json());
 
 app.get("/", (req, res) => {
   res.send("Hello World");
@@ -16,55 +16,71 @@ app.listen(3000, () => {
   });
 });
 
-app.put("/schools/:schoolId/students", (req, res) => {
-    console.log(req.params.schoolId)
-    const bulkUpdateArray = req.body.map(student => {
-        return {
-            updateOne: {
-                filter: {
-                    "schoolId": req.params.schoolId,
-                    "students.studentId": student.studentId
+app.put("/schools/:schoolId/students", async (req, res) => {
+  const students = req.body;
+  await mongoose.connection.db.collection("schools").updateOne(
+    {
+      schoolId: req.params.schoolId,
+    },
+   [ {
+      $set: {
+        students: {
+          $map: {
+            input: "$students",
+            as: "student",
+            in: {
+              $mergeObjects: [
+                "$$student",
+                {
+                  $arrayElemAt: [
+                    {
+                      $filter: {
+                        input: students,
+                        as: "updated_student",
+                        cond: {
+                          $eq: [
+                            "$$updated_student.studentId",
+                            "$$student.studentId",
+                          ],
+                        },
+                      },
+                    },
+                    0,
+                  ],
                 },
-                update: {
-                    $set: {
-                        "students.$": student
-                    }
-                }
-            }
-        }
-    })
-    mongoose.connection.db.collection("schools").bulkWrite([
-        ...bulkUpdateArray
-    ])
-    res.send("Students updated")
-})
-
+              ],
+            },
+          },
+        },
+      },
+    }]
+  );
+  res.send("Students updated");
+});
 
 app.get("/schools/:schoolId/students", async (req, res) => {
-    const school = await mongoose.connection.db.collection("schools").findOne({
-        "schoolId": req.params.schoolId
-    })
-    res.send(school.students)
-})
+  const school = await mongoose.connection.db.collection("schools").findOne({
+    schoolId: req.params.schoolId,
+  });
+  res.send(school.students);
+});
 
 function populateDB() {
-    mongoose.connection.db.collection("schools").drop()
-    let students =[]
-    for (let i = 0; i < 1000; i++) {
-        students.push({
-            studentId : `student${i}`,
-            name: `Student ${i}`,
-            age: 20,
-            email: `student${i}@example.com`,
-        })
-    }
-  mongoose.connection.db.collection("schools").insertOne(
-    {
-      name: "School 1",
-      schoolId: "1",
-      address: "123 Main St",
-      city: "New York",
-      students: students,
-    },
-  );
+  mongoose.connection.db.collection("schools").drop();
+  let students = [];
+  for (let i = 0; i < 1000; i++) {
+    students.push({
+      studentId: `student${i}`,
+      name: `Student ${i}`,
+      age: 20,
+      email: `student${i}@example.com`,
+    });
+  }
+  mongoose.connection.db.collection("schools").insertOne({
+    name: "School 1",
+    schoolId: "1",
+    address: "123 Main St",
+    city: "New York",
+    students: students,
+  });
 }
