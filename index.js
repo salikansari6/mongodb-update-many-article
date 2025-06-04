@@ -17,7 +17,6 @@ app.listen(3000, () => {
 });
 
 app.put("/schools/:schoolId/students", (req, res) => {
-    console.log(req.params.schoolId)
     const bulkUpdateArray = req.body.map(student => {
         return {
             updateOne: {
