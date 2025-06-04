@@ -22,38 +22,31 @@ app.put("/schools/:schoolId/students", async (req, res) => {
     {
       schoolId: req.params.schoolId,
     },
-   [ {
-      $set: {
-        students: {
-          $map: {
-            input: "$students",
-            as: "student",
-            in: {
-              $mergeObjects: [
-                "$$student",
-                {
-                  $arrayElemAt: [
-                    {
-                      $filter: {
-                        input: students,
-                        as: "updated_student",
-                        cond: {
-                          $eq: [
-                            "$$updated_student.studentId",
-                            "$$student.studentId",
-                          ],
-                        },
-                      },
+    [
+      {
+        $set: {
+          students: {
+            $concatArrays: [
+              {
+                $filter: {
+                  input: "$students",
+                  as: "student",
+                  cond: {
+                    $not: {
+                      $in: [
+                        "$$student.studentId",
+                        students.map((student) => student.studentId),
+                      ],
                     },
-                    0,
-                  ],
+                  },
                 },
-              ],
-            },
+              },
+              students
+            ],
           },
         },
       },
-    }]
+    ]
   );
   res.send("Students updated");
 });
