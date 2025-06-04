@@ -17,24 +17,16 @@ app.listen(3000, () => {
 });
 
 app.put("/schools/:schoolId/students", (req, res) => {
-    const bulkUpdateArray = req.body.map(student => {
-        return {
-            updateOne: {
-                filter: {
-                    "schoolId": req.params.schoolId,
-                    "students.studentId": student.studentId
-                },
-                update: {
-                    $set: {
-                        "students.$": student
-                    }
-                }
-            }
-        }
+  for (const student of req.body) {
+    mongoose.connection.db.collection("schools").updateOne({
+      "schoolId": req.params.schoolId,
+      "students.studentId": student.studentId
+    }, {
+      $set: {
+        "students.$": student
+      }
     })
-    mongoose.connection.db.collection("schools").bulkWrite([
-        ...bulkUpdateArray
-    ])
+  }
     res.send("Students updated")
 })
 
